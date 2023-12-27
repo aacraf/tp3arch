@@ -69,57 +69,44 @@ def create_security_group(client, name, ports):
         str: The ID of the created or updated security group.
     """
 
-    print(f"Checking if '{name}' security group name already exists...")
+    print(f"Checking if '{name}' security group already exists...")
 
     # Gets all security groups (if any).
     response = client.describe_security_groups()
+    security_group = None
+    existing_rules = []
 
     # Verifies if the security group already exists.
-    # 1st case: there is a security group with that name already.
-    for i in range(0, len(response['SecurityGroups'])):
-        if response['SecurityGroups'][i]["GroupName"] == name:
+    for group in response['SecurityGroups']:
+        if group["GroupName"] == name:
             print(f"Security group '{name}' already exists.")
-            security_group = response['SecurityGroups'][i]
+            security_group = group
+            existing_rules = [rule['FromPort'] for rule in group['IpPermissions']]
+            break
 
-            existing_rules = [rule['FromPort'] for rule in security_group['IpPermissions']]
-
-            for port in ports:
-                if port not in existing_rules:
-                    client.authorize_security_group_ingress(
-                        GroupId=security_group['GroupId'],  # Use the security group ID
-                        IpPermissions=[
-                            {'IpProtocol': 'tcp',
-                            'FromPort': port,
-                            'ToPort': port,
-                            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}
-                        ]
-                    )
-                    print(f"Inbound port '{port}' enabled in security group '{name}' .\n")
-                else:
-                    print(f"Inbound port '{port}' is already enabled in security group '{name}' .\n")
-            return security_group['GroupId']
-
-    # 2nd case: there is no security group with that name OR there isn't a group yet.
-    security_group = client.create_security_group(
+    if security_group is None:
+        security_group = client.create_security_group(
             GroupName=name,
-            Description='TP2 '+name+' Security Group'
-    )
-    print(f"Security group '{name}' doesn't exist, so it was just created!")
-
-    # Authorize ingress rules using the security group ID
-
-    for port in ports:
-        client.authorize_security_group_ingress(
-            GroupId=security_group['GroupId'],  # Use the security group ID
-            IpPermissions=[
-                {'IpProtocol': 'tcp',
-                'FromPort': port,
-                'ToPort': port,
-                'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}
-            ]
+            Description='TP3 ' + name + ' Security Group'
         )
-        print(f"Inbound port '{port}' enabled in security group '{name}' .\n")
+        print(f"Security group '{name}' didn't exist, so it was just created!")
+
+    # Authorize ingress rules for new or existing security group
+    for port in ports:
+        if port not in existing_rules:
+            client.authorize_security_group_ingress(
+                GroupId=security_group['GroupId'],
+                IpPermissions=[
+                    {'IpProtocol': 'tcp',
+                     'FromPort': port,
+                     'ToPort': port,
+                     'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}
+                ]
+            )
+
     return security_group['GroupId']
+
+
 
 def create_instances(ec2, n, instance_type, image_id, security_group_id, user_data_script, key_pair_name, tagname):
     """
@@ -155,6 +142,7 @@ def create_instances(ec2, n, instance_type, image_id, security_group_id, user_da
         InstanceType=instance_type,
         ImageId=image_id,
         UserData=user_data_script,
+
         #Placement={
         #    'AvailabilityZone': availability_zone
         #},
@@ -187,6 +175,43 @@ def create_instances(ec2, n, instance_type, image_id, security_group_id, user_da
         instance.wait_until_running()
 
     return instances
+
+
+
+def create_instance(ec2, instance_type, image_id, security_group_id, user_data_script, key_pair_name, tagname, subnet,private_ip):
+    """
+    Create an instance from the params passed
+
+    :param: name of the instance to create
+    :param: privateIp of the instance to create
+    :param: SecurityGroupId of the instance to create
+    :param: userData of the instance to create
+    :param: InstanceType of the instance to create
+    :return the instance created
+    """
+    return ec2.run_instances(
+        ImageId="ami-0a6b2839d44d781b2",
+        MinCount=1,
+        MaxCount=1,
+        InstanceType=instance_type,
+        KeyName=key_pair_name,
+        UserData=user_data_script,
+        SecurityGroupIds=[security_group_id],
+        SubnetId=subnet,
+        PrivateIpAddress=private_ip,
+        TagSpecifications=[
+            {
+                'ResourceType': 'instance',
+                'Tags': [
+                    {
+                        'Key': 'Name',
+                        'Value': tagname
+                    },
+                ]
+            },
+        ]
+    )
+
 
 if __name__ == '__main__':
     pass
