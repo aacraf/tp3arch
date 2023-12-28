@@ -53,17 +53,18 @@ def create_keypair(client, name, save_to_file=True):
     return key_pair['KeyName']
 
 
-def create_security_group(client, name, ports):
+def create_security_group(client, name, ports, allowed_ip):
     """
     Creates a new security group with the given name and authorizes ingress rules
-    for the specified ports.
+    for the specified ports for a specific IP address.
     If a security group with the given name already exists, it authorizes ingress
-    rules for the specified ports that are not already enabled.
+    rules for the specified ports and IP that are not already enabled.
 
     Args:
         client (boto3.client): The Boto3 client to use.
         name (str): The name of the security group to create or update.
         ports (list): A list of integers representing the ports to authorize ingress rules for.
+        allowed_ip (str): The IP address (or IP range in CIDR notation) to allow access to the ports.
 
     Returns:
         str: The ID of the created or updated security group.
@@ -81,7 +82,7 @@ def create_security_group(client, name, ports):
         if group["GroupName"] == name:
             print(f"Security group '{name}' already exists.")
             security_group = group
-            existing_rules = [rule['FromPort'] for rule in group['IpPermissions']]
+            existing_rules = [(rule['FromPort'], rule['IpRanges']) for rule in group['IpPermissions']]
             break
 
     if security_group is None:
@@ -93,19 +94,18 @@ def create_security_group(client, name, ports):
 
     # Authorize ingress rules for new or existing security group
     for port in ports:
-        if port not in existing_rules:
+        if (port, [{'CidrIp': allowed_ip}]) not in existing_rules:
             client.authorize_security_group_ingress(
                 GroupId=security_group['GroupId'],
                 IpPermissions=[
                     {'IpProtocol': 'tcp',
                      'FromPort': port,
                      'ToPort': port,
-                     'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}
+                     'IpRanges': [{'CidrIp': allowed_ip}]}
                 ]
             )
 
     return security_group['GroupId']
-
 
 
 def create_instances(ec2, n, instance_type, image_id, security_group_id, user_data_script, key_pair_name, tagname):

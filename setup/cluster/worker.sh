@@ -37,9 +37,12 @@ rm ~/sakila-db.tar.gz
 
 
 # You can add any additional configuration or setup steps here if needed
-sudo su
-mysql
-CREATE USER 'achraf'@'localhost' IDENTIFIED BY 'achraf';
-GRANT ALL PRIVILEGES ON *.* TO 'achraf'@'localhost' WITH GRANT OPTION;
-FLUSH PRIVILEGES;
-exit
+#sudo su
+#mysql
+#CREATE USER 'achraf'@'localhost' IDENTIFIED BY 'achraf';
+#GRANT ALL PRIVILEGES ON *.* TO 'achraf'@'localhost' WITH GRANT OPTION;
+#FLUSH PRIVILEGES;
+#exit
+sudo mysql -e "CREATE USER 'achraf'@'localhost' IDENTIFIED BY 'achraf';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'achraf'@'localhost' WITH GRANT OPTION;"
+sudo mysql -e "FLUSH PRIVILEGES;"

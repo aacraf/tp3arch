@@ -34,6 +34,7 @@ import pymysql
 import time
 import pythonping
 import random
+import json
 
 app = Flask(__name__)
 
@@ -54,7 +55,7 @@ mysql_config = {
 
 def create_ssh_tunnel(node):
   print('Creating tunnel...')
-  tunnel = SSHTunnelForwarder((cluster[node], 22),ssh_username='ubuntu',ssh_pkey='key_pair_tp3.pem',local_bind_address=('127.0.0.1', 3306),  remote_bind_address=('127.0.0.1', 3306))
+  tunnel = SSHTunnelForwarder((cluster[node], 22),ssh_username='ubuntu',ssh_pkey='/home/ubuntu/key_pair_tp3.pem',local_bind_address=('127.0.0.1', 3306),  remote_bind_address=('127.0.0.1', 3306))
   tunnel.start()
 
   print('Tunnel creation successful!')
@@ -95,38 +96,45 @@ def direct():
     connection.close()
     tunnel.close()
     print(data)
-    return str(data)
+    return jsonify(json.loads(data.to_json(orient='records')))
 
 
 @app.route('/random', methods=['POST'])
 def random_hit():
-    nodes = list(cluster.keys())[1:]
-    # Select a random node
-    host = random.choice(nodes)
+    query = request.json.get('query')
+    if 'SELECT' not in query:
+      host = 'manager'
+    else:
+      nodes = list(cluster.keys())[1:]
+      # Select a random node
+      host = random.choice(nodes)
 
     tunnel = create_ssh_tunnel(host)
     time.sleep(20)
     connection = create_connection_to_db(host)
-    query = request.json.get('query')
+
     data = pd.read_sql_query(query, connection)
     connection.close()
     tunnel.close()
     print(data)
-    return str(data)
+    return jsonify(json.loads(data.to_json(orient='records')))
 
 @app.route('/custom', methods=['POST'])
 def custom():
-    host = get_best_server()
+    query = request.json.get('query')
+    if 'SELECT' not in query:
+      host = 'manager'
+    else:
+      host = get_best_server()
     print('best host is', host)
     tunnel = create_ssh_tunnel(host)
     time.sleep(20)
     connection = create_connection_to_db(host)
-    query = request.json.get('query')
     data = pd.read_sql_query(query, connection)
     connection.close()
     tunnel.close()
     print(data)
-    return str(data)
+    return jsonify(json.loads(data.to_json(orient='records')))
 
 
 @app.route('/', methods=['GET'])
@@ -169,6 +177,8 @@ XHKJSscj8y01Xmb4pwpy2bxYTwRqq5E14yDWEIeK219/7tmZHB7s
 EOL
 sudo chmod 400 /home/ubuntu/key_pair_tp3.pem
 
+# Add a delay
+sleep 15
 
 sudo chmod +x /home/ubuntu/proxy.py
 sudo python3 /home/ubuntu/proxy.py

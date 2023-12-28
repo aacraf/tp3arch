@@ -21,7 +21,7 @@ if __name__ == "__main__":
     key_pair_name = create_keypair(client, 'key_pair_tp3')
 
     ## Create security group if it doesn't exist yet. ##
-    security_group = create_security_group(client, 'tp3', [22, 80, 3306])
+    security_group = create_security_group(client, 'tp3', [22, 80, 3306], '172.31.0.0/16')
 
     # create standalone instance.
     #standalone = create_instances(ec2, 4, 't2.micro', "ami-053b0d53c279acc90", security_group, user_data_cluster, key_pair_name, "standalone")

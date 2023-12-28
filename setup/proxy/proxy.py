@@ -28,7 +28,7 @@ if __name__ == "__main__":
     key_pair_name = create_keypair(client, 'key_pair_tp3')
 
     ## Create security group if it doesn't exist yet. ##
-    security_group = create_security_group(client, 'tp3', [22, 80, 3306])
+    security_group = create_security_group(client, 'tp3-proxy', [22, 80, 3306], '172.31.1.13/16')
 
     # create standalone instance.
     subnet = 'subnet-04c4760bb0437e465'
